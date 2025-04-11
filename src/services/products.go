@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,24 +14,22 @@ import (
 type Product struct {
 	ID           string              `json:"id,omitempty" bson:"_id,omitempty"`
 	Name         string              `json:"name,omitempty" bson:"name,omitempty"`
+	ImageUrl     string              `json:"image_url,omitempty" bson:"image_url,omitempty"`
 	ReservePrice float64             `json:"reserve_price,omitempty" bson:"reserve_price,omitempty"`
+	BidderNumber float64             `json:"bidder_number" bson:"bidder_number"`
 	CreatedAt    time.Time           `json:"created_at,omitempty" bson:"created_at,omitempty"`
 	UpdatedAt    time.Time           `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
-	AuctionID    *primitive.ObjectID `json:"auction_id,omitempty" bson:"auction_id,omitempty"`
+	AuctionID    *primitive.ObjectID `json:"auction_id" bson:"auction_id"`
 }
 
 var client *mongo.Client
 
-func New(mongo *mongo.Client) Product {
-	client = mongo
-	return Product{}
-}
-func returnCollectionPointer(collection string) *mongo.Collection {
-	return client.Database("auction_db").Collection(collection)
-}
+
+
 func (p *Product) GetProducts() ([]Product, error) {
-	collection := returnCollectionPointer("products")
-	var products []Product
+	collection := db.ProductsCol
+
+	var products []Product = []Product{}
 	cursor, err := collection.Find(context.TODO(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
@@ -45,12 +44,15 @@ func (p *Product) GetProducts() ([]Product, error) {
 	return products, nil
 }
 func (p *Product) AddProduct(product Product) error {
-	collection := returnCollectionPointer("products")
+	collection := db.ProductsCol
 	_, err := collection.InsertOne(context.TODO(), Product{
 		Name:         product.Name,
 		ReservePrice: product.ReservePrice,
-		CreatedAt:    product.CreatedAt,
-		UpdatedAt:    product.UpdatedAt,
+		BidderNumber: product.BidderNumber,
+		ImageUrl:     product.ImageUrl,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		AuctionID:    nil,
 	})
 	if err != nil {
 		log.Println("Error: ", err)
@@ -59,7 +61,7 @@ func (p *Product) AddProduct(product Product) error {
 	return nil
 }
 func (p *Product) GetProductById(id string) (Product, error) {
-	collection := returnCollectionPointer("products")
+	collection := db.ProductsCol
 	var product Product
 	mongoID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -72,4 +74,21 @@ func (p *Product) GetProductById(id string) (Product, error) {
 		return Product{}, err
 	}
 	return product, nil
+}
+func (p *Product) GetUserProducts(bidderNumber float64) ([]Product, error) {
+	collection := db.ProductsCol
+
+	var products []Product = []Product{}
+	cursor, err := collection.Find(context.TODO(), bson.M{"bidderNumber": bidderNumber})
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+	for cursor.Next(context.Background()) {
+		var product Product
+		cursor.Decode(&product)
+		products = append(products, product)
+	}
+	return products, nil
 }
