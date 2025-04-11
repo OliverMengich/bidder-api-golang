@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"github.com/OliverMengich/bidder-api-golang/src/handlers"
-	"github.com/OliverMengich/bidder-api-golang/src/services"
 )
 
 func main()  {
@@ -23,7 +21,5 @@ func main()  {
 			panic(err)
 		}
 	}()
-	services.New(mongoClient)
-	http.ListenAndServe(":3000",nil)
 	handlers.CreateRouter()
 }
