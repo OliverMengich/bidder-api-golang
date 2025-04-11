@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -22,8 +23,8 @@ type Bid struct {
 var bidMutex sync.Mutex
 
 func (b *Bid) GetAllBids() ([]Bid, error) {
-	collection := returnCollectionPointer("bids")
-	var bids []Bid
+	collection := db.BidsCol
+	var bids []Bid = []Bid{}
 	cursor, err := collection.Find(context.TODO(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
@@ -38,8 +39,8 @@ func (b *Bid) GetAllBids() ([]Bid, error) {
 	return bids, nil
 }
 func (b *Bid) PlaceBid(bid Bid) error {
-	collection := returnCollectionPointer("bids")
-	auctionCollection := returnCollectionPointer("auctions")
+	collection := db.BidsCol
+	auctionCollection := db.AuctionsCol
 	update := bson.M{"$push": bson.M{"bids": bid.ID}}
 	bidMutex.Lock()
 	_, err := collection.InsertOne(context.TODO(), Bid{
