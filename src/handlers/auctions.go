@@ -31,10 +31,10 @@ func createAuction(w http.ResponseWriter, r *http.Request) {
 		responseWithError(w, 400, "Error adding auction")
 	}
 	res := Response{
-		Msg:  "Successfully Added auction to auction",
-		Code: 201,
+		message: "Successfully Added auction to auction",
+		code:    201,
 	}
-	respondWithJSON(w, res.Code, res)
+	respondWithJSON(w, res.code, res)
 }
 func getAuction(w http.ResponseWriter, r *http.Request) {
 	auctionID := r.PathValue("auctionID")

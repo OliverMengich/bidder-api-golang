@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,14 +29,15 @@ type Auction struct {
 	EndTime   *time.Time           `json:"end_time,omitempty" bson:"end_time,omitempty"`
 	WinnerID  *primitive.ObjectID  `json:"winner_id,omitempty" bson:"winner_id,omitempty"`
 	ProductID *primitive.ObjectID  `json:"product_id,omitempty" bson:"product_id,omitempty"`
-	Bids      []primitive.ObjectID `json:"bids,omitempty" bson:"bids,omitempty"`
+	Bids      []primitive.ObjectID `json:"bids" bson:"bids,omitempty"`
 }
 
 func (a *Auction) GetAllAuctions() ([]Auction, error) {
-	collection := returnCollectionPointer("auctions")
-	var auctions []Auction
+	collection := db.AuctionsCol
+	var auctions []Auction = []Auction{}
 	cursor, err := collection.Find(context.TODO(), bson.D{})
 	if err != nil {
+		fmt.Println("Failed fetching", err)
 		log.Fatal(err)
 		return nil, err
 	}
@@ -47,8 +50,8 @@ func (a *Auction) GetAllAuctions() ([]Auction, error) {
 	return auctions, nil
 }
 func (a *Auction) CreateAuction(auction Auction) error {
-	collection := returnCollectionPointer("auctions")
-	biddersCollection :=returnCollectionPointer("bidders")
+	collection := db.AuctionsCol
+	biddersCollection := db.AuctionsCol
 	update := bson.M{"$push": bson.M{"bids": auction.ID}}
 
 	_, err := collection.InsertOne(context.TODO(), Auction{
@@ -66,7 +69,7 @@ func (a *Auction) CreateAuction(auction Auction) error {
 	return nil
 }
 func (a *Auction) GetAuction(auctionID string) (Auction, error) {
-	collection := returnCollectionPointer("auctions")
+	collection := db.AuctionsCol
 	mongoID, err := primitive.ObjectIDFromHex(auctionID)
 	var auction Auction
 	if err != nil {
@@ -81,7 +84,7 @@ func (a *Auction) GetAuction(auctionID string) (Auction, error) {
 	return auction, nil
 }
 func (a *Auction) EndAuction(auctionID string, entry Auction) (*mongo.UpdateResult, error) {
-	collection := returnCollectionPointer("auctions")
+	collection := db.AuctionsCol
 	mongoID, err := primitive.ObjectIDFromHex(auctionID)
 	if err != nil {
 		return nil, err
@@ -101,7 +104,7 @@ func (a *Auction) EndAuction(auctionID string, entry Auction) (*mongo.UpdateResu
 	return res, nil
 }
 func (a *Auction) JoinAuction(auctionID string) (Auction, error) {
-	collection := returnCollectionPointer("auctions")
+	collection := db.AuctionsCol
 	mongoID, err := primitive.ObjectIDFromHex(auctionID)
 	if err != nil {
 		log.Fatal(err)
