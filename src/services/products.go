@@ -14,7 +14,7 @@ import (
 type Product struct {
 	ID           string              `json:"id,omitempty" bson:"_id,omitempty"`
 	Name         string              `json:"name,omitempty" bson:"name,omitempty"`
-	ImageUrl     string              `json:"image_url,omitempty" bson:"image_url,omitempty"`
+	ImagesUrl    []string              `json:"images_url,omitempty" bson:"images_url,omitempty"`
 	ReservePrice float64             `json:"reserve_price,omitempty" bson:"reserve_price,omitempty"`
 	BidderNumber float64             `json:"bidder_number" bson:"bidder_number"`
 	CreatedAt    time.Time           `json:"created_at,omitempty" bson:"created_at,omitempty"`
@@ -49,7 +49,7 @@ func (p *Product) AddProduct(product Product) error {
 		Name:         product.Name,
 		ReservePrice: product.ReservePrice,
 		BidderNumber: product.BidderNumber,
-		ImageUrl:     product.ImageUrl,
+		ImagesUrl:     product.ImagesUrl,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 		AuctionID:    nil,
@@ -75,11 +75,11 @@ func (p *Product) GetProductById(id string) (Product, error) {
 	}
 	return product, nil
 }
-func (p *Product) GetUserProducts(bidderNumber float64) ([]Product, error) {
+func (p *Product) GetUserProducts(bidderNumber int) ([]Product, error) {
 	collection := db.ProductsCol
 
 	var products []Product = []Product{}
-	cursor, err := collection.Find(context.TODO(), bson.M{"bidderNumber": bidderNumber})
+	cursor, err := collection.Find(context.TODO(), bson.M{"bidder_number": bidderNumber})
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
