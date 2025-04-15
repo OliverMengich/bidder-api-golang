@@ -14,7 +14,7 @@ import (
 type Product struct {
 	ID           string              `json:"id,omitempty" bson:"_id,omitempty"`
 	Name         string              `json:"name,omitempty" bson:"name,omitempty"`
-	ImagesUrl    []string              `json:"images_url,omitempty" bson:"images_url,omitempty"`
+	ImagesUrl    []string            `json:"images_url,omitempty" bson:"images_url,omitempty"`
 	ReservePrice float64             `json:"reserve_price,omitempty" bson:"reserve_price,omitempty"`
 	BidderNumber float64             `json:"bidder_number" bson:"bidder_number"`
 	CreatedAt    time.Time           `json:"created_at,omitempty" bson:"created_at,omitempty"`
@@ -23,8 +23,6 @@ type Product struct {
 }
 
 var client *mongo.Client
-
-
 
 func (p *Product) GetProducts() ([]Product, error) {
 	collection := db.ProductsCol
@@ -49,7 +47,7 @@ func (p *Product) AddProduct(product Product) error {
 		Name:         product.Name,
 		ReservePrice: product.ReservePrice,
 		BidderNumber: product.BidderNumber,
-		ImagesUrl:     product.ImagesUrl,
+		ImagesUrl:    product.ImagesUrl,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 		AuctionID:    nil,
