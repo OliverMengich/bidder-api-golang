@@ -14,7 +14,7 @@ import (
 type Product struct {
 	ID           string              `json:"id,omitempty" bson:"_id,omitempty"`
 	Name         string              `json:"name,omitempty" bson:"name,omitempty"`
-	ImagesUrl    []string            `json:"images_url,omitempty" bson:"images_url,omitempty"`
+	ImagesUrl    []string            `json:"images_url" bson:"images_url"`
 	ReservePrice float64             `json:"reserve_price,omitempty" bson:"reserve_price,omitempty"`
 	BidderNumber float64             `json:"bidder_number" bson:"bidder_number"`
 	CreatedAt    time.Time           `json:"created_at,omitempty" bson:"created_at,omitempty"`
@@ -43,6 +43,9 @@ func (p *Product) GetProducts() ([]Product, error) {
 }
 func (p *Product) AddProduct(product Product) error {
 	collection := db.ProductsCol
+	if product.ImagesUrl ==nil {
+		product.ImagesUrl = []string{}
+	}
 	_, err := collection.InsertOne(context.TODO(), Product{
 		Name:         product.Name,
 		ReservePrice: product.ReservePrice,
