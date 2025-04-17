@@ -18,6 +18,7 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := product.GetProducts()
 	if err != nil {
 		responseWithError(w, 400, err.Error())
+		return
 	}
 	respondWithJSON(w, 200, products)
 }
@@ -74,6 +75,7 @@ func createProduct(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("adding error:", err)
 		responseWithError(w, 400, "Error adding Product")
+		return
 	}
 	res := Response{
 		message: "Successfully Added Product to auction",
@@ -88,6 +90,7 @@ func getProductById(w http.ResponseWriter, r *http.Request) {
 	product, err := product.GetProductById(productID)
 	if err != nil {
 		responseWithError(w, 400, "Could not find Product")
+		return
 	}
 	respondWithJSON(w, 200, product)
 }
@@ -100,6 +103,7 @@ func getUserProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := product.GetUserProducts(bidderNumber)
 	if err != nil {
 		responseWithError(w, 400, err.Error())
+		return
 	}
 	respondWithJSON(w, 200, products)
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/OliverMengich/bidder-api-golang/src/services"
@@ -17,6 +16,7 @@ func getAuctions(w http.ResponseWriter, r *http.Request) {
 	auctions, err := auction.GetAllAuctions()
 	if err != nil {
 		responseWithError(w, 400, err.Error())
+		return
 	}
 	respondWithJSON(w, 200, auctions)
 }
@@ -24,11 +24,13 @@ func createAuction(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&auction)
 	if err != nil {
 		responseWithError(w, 400, "Error adding auction")
+		return
 	}
 
 	err = auction.CreateAuction(auction)
 	if err != nil {
 		responseWithError(w, 400, "Error adding auction")
+		return
 	}
 	res := Response{
 		message: "Successfully Added auction to auction",
@@ -41,30 +43,11 @@ func getAuction(w http.ResponseWriter, r *http.Request) {
 	auction, err := auction.GetAuction(auctionID)
 	if err != nil {
 		responseWithError(w, 404, "Auction Not found")
+		return
 	}
 	respondWithJSON(w, 200, auction)
 }
 
-func joinAuction(ws *websocket.Conn) {
-	// keep websocket connection with the auc
-	auctionID := ws.Request().PathValue("auctionID")
-	fmt.Println(auctionID)
-
-	auction, err := auction.JoinAuction(auctionID)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(auction)
-
-}
-func endAuction(ws *websocket.Conn) {
-	err := json.NewDecoder(ws.Request().Body).Decode(&auction)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Endig auction")
-	auction.EndAuction(auction.ID, auction)
-}
 func readLoop(ws *websocket.Conn) {
 	buf := make([]byte, 1024)
 	for {

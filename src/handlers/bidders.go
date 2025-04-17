@@ -15,6 +15,7 @@ func registerBidder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		responseWithError(w, 400, "Error adding Product")
+		return
 	}
 
 	err = bidder.RegisterBidder(bidder)
