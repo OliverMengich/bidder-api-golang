@@ -23,5 +23,4 @@ func placeBid(ws *websocket.Conn) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

@@ -43,7 +43,7 @@ func (p *Product) GetProducts() ([]Product, error) {
 }
 func (p *Product) AddProduct(product Product) error {
 	collection := db.ProductsCol
-	if product.ImagesUrl ==nil {
+	if product.ImagesUrl == nil {
 		product.ImagesUrl = []string{}
 	}
 	_, err := collection.InsertOne(context.TODO(), Product{
