@@ -9,15 +9,24 @@ import (
 	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Bid struct {
-	ID        string              `json:"id,omitempty" bson:"_id,omitempty"`
-	Amount    float64             `json:"amount,omitempty" bson:"amount,omitempty"`
-	CreatedAt time.Time           `json:"created_at,omitempty" bson:"start_time,omitempty"`
-	Updated   time.Time           `json:"end_time,omitempty" bson:"end_time,omitempty"`
-	AuctionID *primitive.ObjectID `json:"auction_id,omitempty" bson:"auction_id,omitempty"`
-	BidderID  *primitive.ObjectID `json:"bidder_id,omitempty" bson:"bidder_id,omitempty"`
+	ID           string              `json:"id,omitempty" bson:"_id,omitempty"`
+	Amount       float64             `json:"amount,omitempty" bson:"amount,omitempty"`
+	CreatedAt    time.Time           `json:"created_at,omitempty" bson:"start_time,omitempty"`
+	Updated      time.Time           `json:"updated_time,omitempty" bson:"updated_time,omitempty"`
+	AuctionID    *primitive.ObjectID `json:"auction_id,omitempty" bson:"auction_id,omitempty"`
+	Auction      *Auction            `json:"auction"`
+	BidderNumber *float64            `json:"bidder_number,omitempty" bson:"bidder_number,omitempty"`
+}
+type BidInfo struct {
+	ID           primitive.ObjectID `json:"id"`
+	AuctionID    string             `json:"auction_id"`
+	CreatedAt    time.Time          `json:"created_at"`
+	Amount       float64            `json:"amount"`
+	BidderNumber float64            `json:"bidder_number"`
 }
 
 var bidMutex sync.Mutex
