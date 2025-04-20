@@ -47,29 +47,43 @@ func (b *Bid) GetAllBids() ([]Bid, error) {
 	}
 	return bids, nil
 }
-func (b *Bid) PlaceBid(bid Bid) error {
+func (b *Bid) PlaceBid(bidAmount float64, bidderNumber *float64, auctionID string) (string, error) {
 	collection := db.BidsCol
 	auctionCollection := db.AuctionsCol
-	update := bson.M{"$push": bson.M{"bids": bid.ID}}
+	mongoID, err := primitive.ObjectIDFromHex(auctionID)
 	bidMutex.Lock()
-	_, err := collection.InsertOne(context.TODO(), Bid{
-		Amount:    bid.Amount,
-		BidderID:  b.BidderID,
-		CreatedAt: time.Now(),
-		Updated:   time.Now(),
-		AuctionID: bid.AuctionID,
+	res, err := collection.InsertOne(context.TODO(), Bid{
+		Amount:       bidAmount,
+		BidderNumber: bidderNumber,
+		CreatedAt:    time.Now(),
+		Updated:      time.Now(),
+		AuctionID:    &mongoID,
 	})
+
+	insertedID := res.InsertedID
+	bidID, ok := insertedID.(primitive.ObjectID)
+	if !ok {
+		log.Println("Failed to convert inserted ID to ObjectID")
+		return "", err
+	}
+	var acc Auction
+	updateBids := bson.M{"$push": bson.M{"bids_id": bidID}}
+	updateBidders := bson.M{"$addToSet": bson.M{"bidders": bidderNumber}}
 	bidMutex.Unlock()
 	if err != nil {
 		log.Println("Error: ", err)
-		return err
+		return "", err
 	}
 	bidMutex.Lock()
-	_, err = auctionCollection.UpdateOne(context.Background(), bson.M{"_id": bid.AuctionID}, update)
+	_, err = auctionCollection.UpdateOne(context.Background(), bson.M{"_id": mongoID}, updateBids)
+	//_, err = auctionCollection.UpdateOne(context.Background(), bson.M{"_id": mongoID}, updateBidders)
+	//upsertID := upRes.UpsertedID
+	//aucID, ok := upsertID.(primitive.ObjectID)
+	err = auctionCollection.FindOneAndUpdate(context.Background(), bson.M{"_id": mongoID}, updateBidders, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&acc)
 	bidMutex.Unlock()
 	if err != nil {
 		log.Println("Error: ", err)
-		return err
+		return "", err
 	}
-	return nil
+	return auctionID, nil
 }
