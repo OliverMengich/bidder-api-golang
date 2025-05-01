@@ -9,7 +9,7 @@ import (
 	"github.com/OliverMengich/bidder-api-golang/src/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type AuctionStatus int
@@ -21,47 +21,96 @@ const (
 )
 
 type Auction struct {
-	ID        string               `json:"id,omitempty" bson:"_id,omitempty"`
-	Status    AuctionStatus        `json:"status,omitempty" bson:"status,omitempty"`
-	ManagerID string               `json:"manager_id,omitempty" bson:"manager_id,omitempty"`
-	StartTime time.Time            `json:"start_time,omitempty" bson:"start_time,omitempty"`
-	WinPrice  *float64             `json:"win_price,omitempty" bson:"win_price,omitempty"`
-	EndTime   *time.Time           `json:"end_time,omitempty" bson:"end_time,omitempty"`
-	WinnerID  *primitive.ObjectID  `json:"winner_id,omitempty" bson:"winner_id,omitempty"`
-	ProductID *primitive.ObjectID  `json:"product_id,omitempty" bson:"product_id,omitempty"`
-	Bids      []primitive.ObjectID `json:"bids" bson:"bids,omitempty"`
+	ID          string               `json:"id,omitempty" bson:"_id,omitempty"`
+	Status      AuctionStatus        `json:"status,omitempty" bson:"status,omitempty"`
+	ManagerID   float64              `json:"manager_id" bson:"manager_id"`
+	StartTime   time.Time            `json:"start_time,omitempty" bson:"start_time,omitempty"`
+	WinPrice    *float64             `json:"win_price" bson:"win_price"`
+	EndTime     *time.Time           `json:"end_time" bson:"end_time"`
+	WinnerID    *primitive.ObjectID  `json:"winner_id" bson:"winner_id"`
+	ProductID   *primitive.ObjectID  `json:"product_id" bson:"product_id"`
+	BidsID      []primitive.ObjectID `json:"-" bson:"bids_id"`
+	Bids        []BidInfor           `json:"bids"`
+	Bidders     []float64            `json:"bidders" bson:"bidders"`
+	ProductInfo *ProductInfo         `json:"product,omitempty"`
+}
+
+type BidInfor struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	BidderNumber float64            `json:"bidder_number" bson:"bidder_number"`
+	CreatedAt    time.Time          `json:"created_at" bson:"created_at"`
+}
+type ProductInfo struct {
+	ID           primitive.ObjectID `json:"id"`
+	Name         string             `json:"name"`
+	ReservePrice float64            `json:"reserve_price"`
+	ImagesUrl    []string           `json:"images_url"`
 }
 
 func (a *Auction) GetAllAuctions() ([]Auction, error) {
-	collection := db.AuctionsCol
+	auctionCollection := db.AuctionsCol
+	productCollection := db.ProductsCol
 	var auctions []Auction = []Auction{}
-	cursor, err := collection.Find(context.TODO(), bson.D{})
+	cursor, err := auctionCollection.Find(context.TODO(), bson.D{})
 	if err != nil {
-		fmt.Println("Failed fetching", err)
-		log.Fatal(err)
+		log.Println("Failed fetching auctions:", err)
 		return nil, err
 	}
 	defer cursor.Close(context.Background())
 	for cursor.Next(context.Background()) {
 		var auction Auction
-		cursor.Decode(&auction)
+		if err := cursor.Decode(&auction); err != nil {
+			log.Println("Decode auction error:", err)
+			continue
+		}
+		// Fetch corresponding product
+		var product struct {
+			ID           primitive.ObjectID `bson:"_id"`
+			Name         string             `bson:"name"`
+			ReservePrice float64            `bson:"reserve_price"`
+		}
+		err := productCollection.FindOne(context.TODO(), bson.M{"_id": auction.ProductID}).Decode(&product)
+		if err == nil {
+			auction.ProductInfo = &ProductInfo{
+				ID:           product.ID,
+				Name:         product.Name,
+				ReservePrice: product.ReservePrice,
+			}
+		} else {
+			log.Println("Could not find product for auction:", err)
+		}
 		auctions = append(auctions, auction)
+	}
+	if err := cursor.Err(); err != nil {
+		log.Println("Cursor error:", err)
+		return nil, err
 	}
 	return auctions, nil
 }
 func (a *Auction) CreateAuction(auction Auction) error {
 	collection := db.AuctionsCol
-	biddersCollection := db.AuctionsCol
-	update := bson.M{"$push": bson.M{"bids": auction.ID}}
-
-	_, err := collection.InsertOne(context.TODO(), Auction{
+	productsCollection := db.ProductsCol
+	res, err := collection.InsertOne(context.TODO(), Auction{
+		WinPrice:  nil,
+		WinnerID:  nil,
+		BidsID:    []primitive.ObjectID{},
 		Status:    Active,
 		StartTime: time.Now(),
 		ManagerID: auction.ManagerID,
 		EndTime:   nil,
+		Bidders:   []float64{},
 		ProductID: auction.ProductID,
 	})
-	_, err = biddersCollection.UpdateOne(context.Background(), bson.M{"_id": auction.ManagerID}, update)
+	insertedID := res.InsertedID 
+	auctionID, ok := insertedID.(primitive.ObjectID)
+	if !ok {
+		log.Println("Failed to convert inserted ID to ObjectID")
+		return err
+	}
+	update := bson.M{"$set": bson.M{"auction_id": auctionID}}
+
+	_, err = productsCollection.UpdateOne(context.Background(), bson.M{"_id": auction.ProductID}, update)
 	if err != nil {
 		log.Println("Error: ", err)
 		return err
