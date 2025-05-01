@@ -119,6 +119,7 @@ func (a *Auction) CreateAuction(auction Auction) error {
 }
 func (a *Auction) GetAuction(auctionID string) (Auction, error) {
 	collection := db.AuctionsCol
+	bidsCollection := db.BidsCol
 	mongoID, err := primitive.ObjectIDFromHex(auctionID)
 	var auction Auction
 	if err != nil {
@@ -127,30 +128,59 @@ func (a *Auction) GetAuction(auctionID string) (Auction, error) {
 	}
 	err = collection.FindOne(context.Background(), bson.M{"_id": mongoID}).Decode(&auction)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Failed fetching auctions:", err)
 		return Auction{}, err
 	}
+	productCollection := db.ProductsCol
+	var prd struct {
+		ID           primitive.ObjectID `bson:"_id"`
+		Name         string             `bson:"name"`
+		ReservePrice float64            `bson:"reserve_price"`
+		ImagesUrl    []string           `bson:"images_url"`
+	}
+	var bids []BidInfor = []BidInfor{}
+	err = productCollection.FindOne(context.Background(), bson.M{"_id": auction.ProductID}).Decode(&prd)
+	cursor, err := bidsCollection.Find(context.Background(), bson.M{"_id": bson.M{"$in": auction.BidsID}})
+	if err != nil {
+		log.Println("Failed fetching auctions:", err)
+		return Auction{}, err
+	}
+	defer cursor.Close(context.Background())
+	if err = cursor.All(context.Background(), &bids); err != nil {
+		fmt.Println("error:", err)
+		return Auction{}, err
+	}
+	auction.ProductInfo = (*ProductInfo)(&prd)
+	auction.Bids = bids
 	return auction, nil
 }
-func (a *Auction) EndAuction(auctionID string, entry Auction) (*mongo.UpdateResult, error) {
+func (a *Auction) EndAuction(auctionID string, winnerID string, winPrice float64) (Auction, error) {
 	collection := db.AuctionsCol
-	mongoID, err := primitive.ObjectIDFromHex(auctionID)
+	productCollection := db.ProductsCol
+	mongoID, err := primitive.ObjectIDFromHex(winnerID)
 	if err != nil {
-		return nil, err
+		return Auction{}, err
 	}
+	var updatedAuction Auction
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
 			{Key: "end_time", Value: time.Now()},
-			{Key: "winner_id", Value: entry.WinnerID},
+			{Key: "winner_id", Value: mongoID},
 			{Key: "status", Value: Ended},
-			{Key: "win_price", Value: entry.WinPrice},
+			{Key: "win_price", Value: winPrice},
 		}},
 	}
-	res, err := collection.UpdateOne(context.Background(), bson.M{"_id": mongoID}, update)
+	err = collection.FindOneAndUpdate(context.Background(), bson.M{"_id": mongoID}, update, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedAuction)
 	if err != nil {
-		return nil, err
+		return Auction{}, err
 	}
-	return res, nil
+	//res, err := collection.UpdateOne(context.Background(), bson.M{"_id": mongoID}, update)
+	// delete the product from the list of products
+	_, err = productCollection.DeleteOne(context.Background(), bson.M{"_id": updatedAuction.ProductID})
+	if err != nil {
+		return Auction{}, err
+	}
+	return updatedAuction, nil
 }
 func (a *Auction) JoinAuction(auctionID string) (Auction, error) {
 	collection := db.AuctionsCol
